@@ -1,167 +1,89 @@
-### data_processing.py (Veri yükleme ve ön işleme için)
+print("Kod Başladı")
+
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
 import gc
-import streamlit as st
-
-@st.cache_data
-def load_data(file_path):
-    data = pd.read_csv(file_path)
-    selected_columns = ["shopping_mall", "category", "quantity"]
-    return data[selected_columns]
-
-@st.cache_data
-def preprocess_data(data):
-    data_encoded = pd.get_dummies(data, drop_first=True)
-    scaler = StandardScaler()
-    scaled_data = scaler.fit_transform(data_encoded)
-    return scaled_data
-
-def cleanup():
-    gc.collect()
-
-### __init__.py (Modül dosyası)
-# Bu dosya klasörü bir Python modülü haline getirir. İçerik olarak boş bırakılabilir.
-
-### clustering_algorithms.py (Kümeleme algoritmalarını içerir)
-import time
-import psutil
-from sklearn.cluster import MiniBatchKMeans
-from hdbscan import HDBSCAN
-from scipy.cluster.hierarchy import fcluster
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
-import streamlit as st
-
-@st.cache_resource
-def measure_cpu_time():
-    process = psutil.Process()
-    return process.cpu_times().user
-
-@st.cache_resource
-def run_kmeans(scaled_data, n_clusters=3):
-    start_time = measure_cpu_time()
-    param_dist_kmeans = {'n_clusters': [n_clusters], 'batch_size': [100, 200]}
-    kmeans = MiniBatchKMeans(random_state=42)
-    kmeans_search = RandomizedSearchCV(kmeans, param_distributions=param_dist_kmeans, n_iter=3, cv=2)
-    kmeans_search.fit(scaled_data)
-    labels = kmeans_search.best_estimator_.predict(scaled_data)
-    cpu_time = measure_cpu_time() - start_time
-    return labels, cpu_time
-
-@st.cache_resource
-def run_hdbscan(scaled_data):
-    start_time = measure_cpu_time()
-    hdbscan = HDBSCAN(min_cluster_size=10, min_samples=5)
-    labels = hdbscan.fit_predict(scaled_data)
-    cpu_time = measure_cpu_time() - start_time
-    return labels, cpu_time
-
-@st.cache_resource
-def run_fastcluster(scaled_data, n_clusters=3):
-    start_time = measure_cpu_time()
-    linkage_matrix = fastcluster.linkage_vector(scaled_data, method="ward")
-    clusters = fcluster(linkage_matrix, t=n_clusters, criterion="maxclust")
-    cpu_time = measure_cpu_time() - start_time
-    return clusters, cpu_time
-
-### streamlit_app.py (Ana GUI dosyası)
-import streamlit as st
+import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
-import plotly.express as px
-import os
-import sys
+from time import time
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import MiniBatchKMeans
+from hdbscan import HDBSCAN
+from scipy.cluster.hierarchy import linkage, fcluster
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import silhouette_score
 
-# Dosya yolu ayarı
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
+# Uyarıları bastırma
+warnings.filterwarnings("ignore")
 
-# Modül içe aktarma
-try:
-    from data_processing_Kopya import load_data, preprocess_data, cleanup
-    from clustering_algorithms import run_kmeans, run_hdbscan, run_fastcluster
-except ImportError as e:
-    st.error(f"Modül içe aktarma hatası: {e}")
-    st.stop()
+# CPU Zaman Ölçüm Fonksiyonu
+def measure_cpu_time():
+    return time()
 
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+# Veri yükleme
+file_path = "E:\\Bilgiye Erişim Proje\\customer_shopping_data_Kopya.csv"
+data = pd.read_csv(file_path)
 
-st.set_page_config(layout="wide")
+# Gerekli sütunları seçme
+selected_columns = ["shopping_mall", "category", "quantity"]
+data = data[selected_columns]
 
-# Sidebar ile Dosya Yükleme ve Algoritma Seçimi
-st.sidebar.title("Kümeleme Analizi Ayarları")
-file_path = st.sidebar.file_uploader("Lütfen CSV dosyanızı yükleyin")
-algorithm_choice = st.sidebar.selectbox("Kümeleme Algoritması Seçin", ["MiniBatch K-Means", "HDBSCAN", "Fastcluster"])
-num_clusters = st.sidebar.slider("Küme Sayısı Seçin", min_value=2, max_value=10, value=3)
+# Belleği temizleme
+gc.collect()
 
-# Örnek veri seti kullanımı
-if st.sidebar.button("Örnek Veri Seti Kullan"):
-    data = pd.DataFrame({
-        "shopping_mall": ["Mall A", "Mall B", "Mall C", "Mall A", "Mall B"],
-        "category": ["Electronics", "Clothing", "Food", "Electronics", "Clothing"],
-        "quantity": [100, 200, 150, 180, 220]
-    })
-    st.write("**Örnek Veri Seti Yüklendi.**")
+# Kategorik değişkenleri sayısal hale getirme
+data_encoded = pd.get_dummies(data, drop_first=True)
 
-if file_path:
-    st.title("Alışveriş Merkezi Kümeleme ve Satış Analizi")
-    data = load_data(file_path)
-    st.subheader("Veri Önizleme")
-    st.dataframe(data.head())
-    scaled_data = preprocess_data(data)
-    cleanup()
+# Veriyi normalize etme
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(data_encoded)
 
-    # Algoritma Seçimi
-    if algorithm_choice == "MiniBatch K-Means":
-        labels, cpu_time = run_kmeans(scaled_data, num_clusters)
-    elif algorithm_choice == "HDBSCAN":
-        labels, cpu_time = run_hdbscan(scaled_data)
-    else:
-        labels, cpu_time = run_fastcluster(scaled_data, num_clusters)
+# Belleği temizleme
+gc.collect()
 
-    # Performans Skorları
-    silhouette = silhouette_score(scaled_data, labels)
-    davies_bouldin = davies_bouldin_score(scaled_data, labels)
-    calinski_harabasz = calinski_harabasz_score(scaled_data, labels)
+# MiniBatch K-Means için Hiper Parametre Optimizasyonu (Çok Hızlı)
+start_time = measure_cpu_time()
+kmeans = MiniBatchKMeans(n_clusters=3, batch_size=100, random_state=42)
+kmeans.fit(scaled_data)
+kmeans_labels = kmeans.predict(scaled_data)
+kmeans_cpu_time = measure_cpu_time() - start_time
+print(f"MiniBatch K-Means CPU Zamanı: {kmeans_cpu_time:.4f} saniye")
 
-    st.sidebar.subheader("Performans Metrikleri")
-    st.sidebar.write(f"**CPU Time:** {cpu_time:.2f} s")
-    st.sidebar.write(f"**Silhouette Score:** {silhouette:.4f}")
-    st.sidebar.write(f"**Davies-Bouldin Score:** {davies_bouldin:.4f}")
-    st.sidebar.write(f"**Calinski-Harabasz Score:** {calinski_harabasz:.4f}")
+# HDBSCAN için Hiper Parametre Optimizasyonu (Çok Hızlı)
+start_time = measure_cpu_time()
+optimal_hdbscan = HDBSCAN(min_cluster_size=10, min_samples=5)
+hdbscan_labels = optimal_hdbscan.fit_predict(scaled_data)
+hdbscan_cpu_time = measure_cpu_time() - start_time
+print(f"HDBSCAN CPU Zamanı: {hdbscan_cpu_time:.4f} saniye")
 
-    # Hata Düzeltmesi: MultiIndex için pivot_table kullanımı
-    filtered_data = data.copy()
-    sales_heatmap_grouped = filtered_data.pivot_table(
-        values="quantity",
-        index="shopping_mall",
-        columns="category",
-        aggfunc="sum",
-        fill_value=0
-    )
+# Scipy.cluster.hierarchy için Hiper Parametre Optimizasyonu
+start_time = measure_cpu_time()
+linkage_matrix = linkage(scaled_data, method="ward")
+clusters = fcluster(linkage_matrix, t=3, criterion="maxclust")
+fastcluster_cpu_time = measure_cpu_time() - start_time
+print(f"Scipy Fastcluster CPU Zamanı: {fastcluster_cpu_time:.4f} saniye")
 
-    # Gerçek Zamanlı İlerleme Çubuğu
-    progress_bar = st.progress(0)
-    for i in range(100):
-        time.sleep(0.02)
-        progress_bar.progress(i + 1)
+# Performans karşılaştırma tablosu
+performance_metrics = pd.DataFrame({
+    'Algorithm': ['MiniBatch K-Means', 'HDBSCAN', 'Scipy Fastcluster'],
+    'CPU Time (s)': [kmeans_cpu_time, hdbscan_cpu_time, fastcluster_cpu_time]
+})
+print(performance_metrics)
 
-    # Algoritma Karşılaştırma Çubuk Grafiği
-    comparison_metrics = pd.DataFrame({
-        "Algorithm": ["MiniBatch K-Means", "HDBSCAN", "Fastcluster"],
-        "Silhouette Score": [silhouette, silhouette, silhouette],
-        "Davies-Bouldin Score": [davies_bouldin, davies_bouldin, davies_bouldin],
-        "Calinski-Harabasz Score": [calinski_harabasz, calinski_harabasz, calinski_harabasz]
-    })
-    comparison_fig = px.bar(
-        comparison_metrics,
-        x="Algorithm",
-        y=["Silhouette Score", "Davies-Bouldin Score", "Calinski-Harabasz Score"],
-        barmode="group"
-    )
-    st.plotly_chart(comparison_fig)
+# Satış Yoğunluğu Tablosu (Her Algoritma İçin Ayrı Grafik, Tüm Kategoriler Bir Arada)
+for algorithm, labels in zip(["MiniBatch K-Means", "HDBSCAN", "Scipy Fastcluster"], [kmeans_labels, hdbscan_labels, clusters]):
+    sales_heatmap = data.copy()
+    sales_heatmap["cluster"] = labels
+    sales_heatmap_grouped = sales_heatmap.pivot_table(values="quantity", index="shopping_mall", columns="category", aggfunc="sum", fill_value=0)
+    plt.figure(figsize=(14, 10))
+    sns.heatmap(sales_heatmap_grouped, annot=True, fmt=".0f", cmap="coolwarm")
+    plt.title(f"{algorithm} Satış Yoğunluğu (Tüm Kategoriler Bir Arada)")
+    plt.xlabel("Ürün Kategorisi")
+    plt.ylabel("Alışveriş Merkezi")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
 
-    st.success("Analiz Tamamlandı! Sonuçlar Önbelleğe Alındı!")
-    cleanup()
+gc.collect()
+print("Kod Bitti")
