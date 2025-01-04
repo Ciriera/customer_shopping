@@ -30,7 +30,7 @@ import psutil
 from sklearn.cluster import MiniBatchKMeans
 from hdbscan import HDBSCAN
 import fastcluster
-from scipy.cluster.hierarchy import fcluster
+from scipy.cluster.hierarchy import linkage, fcluster
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 import streamlit as st
