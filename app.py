@@ -29,7 +29,8 @@ import time
 import psutil
 from sklearn.cluster import MiniBatchKMeans
 from hdbscan import HDBSCAN
-from scipy.cluster.hierarchy import linkage, fcluster
+import fastcluster
+from scipy.cluster.hierarchy import fcluster
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 import streamlit as st
@@ -80,7 +81,7 @@ sys.path.append(current_dir)
 
 # Modül içe aktarma
 try:
-    from data_processing_Kopya import load_data, preprocess_data, cleanup
+    from data_processing import load_data, preprocess_data, cleanup
     from clustering_algorithms import run_kmeans, run_hdbscan, run_fastcluster
 except ImportError as e:
     st.error(f"Modül içe aktarma hatası: {e}")
