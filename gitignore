@@ -1,0 +1,48 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C Extension
+*.so
+
+# Packages
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+wheels/
+
+# Virtual Environment
+.env
+.venv
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Hidden Files
+*.DS_Store
+*.vscode/
+*.bak
+*.swp
+*.swo
+
+# Log Files
+*.log
+
+# Runtime Files
+runtime.txt
+
+# Git Ignore itself
+.gitignore
