@@ -7,3 +7,4 @@ fastcluster
 hdbscan
 psutil
 streamlit
+scipy
