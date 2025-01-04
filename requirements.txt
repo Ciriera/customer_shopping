@@ -8,3 +8,4 @@ hdbscan
 psutil
 streamlit
 scipy
+plotly
